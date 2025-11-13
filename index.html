@@ -3,46 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PureVPN WireGuard Config Generator</title>
+    <title>PureVPN WireGuard Config</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-        button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { 
+            margin: 10px; 
+            padding: 15px 25px; 
+            font-size: 18px; 
+            width: 80%; 
+            border: none; 
+            border-radius: 8px; 
+            background: #007bff; 
+            color: white; 
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .loading { display: none; color: green; font-weight: bold; }
+        .config { margin-top: 20px; }
+        pre { background: #eee; padding: 15px; text-align: left; border-radius: 8px; display: inline-block; }
+        .copy-btn { margin-top: 10px; padding: 8px 16px; font-size: 14px; }
     </style>
 </head>
 <body>
-    <h1>Select Location for WireGuard Config</h1>
-    <button onclick="triggerWorkflow('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
-    <button onclick="triggerWorkflow('UK - London')">🇬🇧 UK - London</button>
-    <button onclick="triggerWorkflow('Germany - Frankfurt')">🇩🇪 Germany - Frankfurt</button>
-    <button onclick="triggerWorkflow('Netherlands - Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
-    <button onclick="triggerWorkflow('Turkey - Istanbul')">🇹🇷 Turkey - Istanbul</button>
+    <div class="container">
+        <h1>WireGuard Config Generator</h1>
+        <p>کلیک کن → ۳۰ دقیقه کانفیگ بگیر</p>
+
+        <button onclick="generate('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
+        <button onclick="generate('UK - London')">🇬🇧 UK - London</button>
+        <button onclick="generate('Germany - Frankfurt')">🇩🇪 Germany - Frankfurt</button>
+        <button onclick="generate('Netherlands - Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
+        <button onclick="generate('Turkey - Istanbul')">🇹🇷 Turkey - Istanbul</button>
+
+        <div id="loading" class="loading">در حال تولید کانفیگ... لطفاً صبر کنید (حدود ۳۰ ثانیه)</div>
+        <div id="result" class="config" style="display:none;">
+            <pre id="config-text"></pre>
+            <button class="copy-btn" onclick="copyConfig()">کپی کانفیگ</button>
+        </div>
+    </div>
 
     <script>
-        async function triggerWorkflow(location) {
-            const token = prompt('Enter your GitHub Personal Access Token:');
-            if (!token) return;
+        const TOKEN = '${{ secrets.YOUR_GITHUB_TOKEN }}'; // از GitHub Pages env میاد
+
+        async function generate(location) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
 
             const owner = 'sinavm';
             const repo = 'wireguard';
             const workflow_id = 'generate-config.yml';
 
-            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/dispatches`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    ref: 'main',
-                    inputs: { location: location }
-                })
-            });
+            try {
+                const dispatchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/dispatches`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ref: 'main',
+                        inputs: { location: location }
+                    })
+                });
 
-            if (response.ok) {
-                alert('Workflow triggered! Check Actions logs for config and copy it.');
-            } else {
-                alert('Error triggering workflow.');
+                if (!dispatchRes.ok) throw new Error('Failed to trigger workflow');
+
+                const run = await pollLatestRun(owner, repo);
+                if (!run) throw new Error('No run found');
+
+                const jobs = await fetchJobs(run.jobs_url, TOKEN);
+                const job = jobs.jobs.find(j => j.name === 'generate');
+                if (!job) throw new Error('Job not found');
+
+                const logs = await fetchLogs(job.logs_url, TOKEN);
+                const config = extractConfigFromLogs(logs);
+
+                document.getElementById('config-text').textContent = config;
+                document.getElementById('result').style.display = 'block';
+            } catch (err) {
+                alert('خطا: ' + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
             }
+        }
+
+        async function pollLatestRun(owner, repo) {
+            for (let i = 0; i < 30; i++) {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`, {
+                    headers: { 'Authorization': `token ${TOKEN}` }
+                });
+                const data = await res.json();
+                if (data.workflow_runs && data.workflow_runs[0].status === 'completed') {
+                    return data.workflow_runs[0];
+                }
+                await new Promise(r => setTimeout(r, 3000));
+            }
+            return null;
+        }
+
+        async function fetchJobs(jobs_url, token) {
+            const res = await fetch(jobs_url, { headers: { 'Authorization': `token ${token}` } });
+            return await res.json();
+        }
+
+        async function fetchLogs(logs_url, token) {
+            const res = await fetch(logs_url, { headers: { 'Authorization': `token ${token}` } });
+            return await res.text();
+        }
+
+        function extractConfigFromLogs(logs) {
+            const start = logs.indexOf('[Interface]');
+            const end = logs.indexOf('\n\n', start);
+            return logs.substring(start, end > start ? end : undefined).trim();
+        }
+
+        function copyConfig() {
+            const text = document.getElementById('config-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('کانفیگ کپی شد!');
+            });
         }
     </script>
 </body>
