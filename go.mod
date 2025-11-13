@@ -1,4 +1,4 @@
-module github.com/yourusername/wireguard-improved
+module github.com/sinavm/wireguard
 
 go 1.22
 
