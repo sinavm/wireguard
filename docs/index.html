@@ -1,246 +1,129 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تولیدکننده کانفیگ WireGuard PureVPN</title>
+    <title>PureVPN WireGuard Config</title>
     <style>
-        body { 
-            font-family: 'Tahoma', Arial, sans-serif; 
-            text-align: center; 
-            padding: 50px; 
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); 
-            margin: 0;
-        }
-        h1 { color: #333; margin-bottom: 30px; }
-        p { color: #666; margin-bottom: 40px; font-size: 16px; }
-        .location-btn { 
-            display: block; 
-            margin: 20px auto; 
-            padding: 20px 40px; 
-            font-size: 20px; 
-            cursor: pointer; 
-            border: none; 
-            border-radius: 10px; 
-            background: linear-gradient(45deg, #007bff, #0056b3); 
-            color: white; 
-            box-shadow: 0 4px 15px rgba(0,123,255,0.3); 
-            transition: all 0.3s ease; 
-            width: 300px;
-        }
-        .location-btn:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(0,123,255,0.4); 
-        }
-        .location-btn:active { 
-            transform: translateY(0); 
-        }
-        #message { 
-            display: none; 
-            position: fixed; 
-            top: 20px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: #28a745; 
-            color: white; 
-            padding: 15px 30px; 
-            border-radius: 5px; 
-            z-index: 1000; 
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { 
+            margin: 10px; 
+            padding: 15px 25px; 
             font-size: 18px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-        }
-        #loading { 
-            display: none; 
-            color: #007bff; 
-            font-size: 16px; 
-            margin-top: 20px; 
-        }
-        #error { 
-            display: none; 
-            background: #dc3545; 
+            width: 80%; 
+            border: none; 
+            border-radius: 8px; 
+            background: #007bff; 
             color: white; 
-            padding: 15px; 
-            margin: 20px; 
-            border-radius: 5px; 
+            cursor: pointer;
         }
+        button:hover { background: #0056b3; }
+        .loading { display: none; color: green; font-weight: bold; }
+        .config { margin-top: 20px; }
+        pre { background: #eee; padding: 15px; text-align: left; border-radius: 8px; display: inline-block; }
+        .copy-btn { margin-top: 10px; padding: 8px 16px; font-size: 14px; }
     </style>
 </head>
 <body>
-    <h1>انتخاب لوکیشن برای کانفیگ WireGuard (۳۰ دقیقه معتبر)</h1>
-    <p>روی پرچم لوکیشن مورد نظر کلیک کنید تا کانفیگ به کلیپ‌بورد کپی شود. GitHub Actions به طور خودکار اجرا می‌شود و کانفیگ جدید تولید می‌گردد.</p>
-    
-    <button class="location-btn" onclick="generateAndCopy('UAE-Dubai', '🇦🇪 امارات - دبی')">
-        🇦🇪 امارات - دبی
-    </button>
-    <button class="location-btn" onclick="generateAndCopy('UK-London', '🇬🇧 انگلیس - لندن')">
-        🇬🇧 انگلیس - لندن
-    </button>
-    <button class="location-btn" onclick="generateAndCopy('Germany-Frankfurt', '🇩🇪 آلمان - فرانکفورت')">
-        🇩🇪 آلمان - فرانکفورت
-    </button>
-    <button class="location-btn" onclick="generateAndCopy('Netherlands-Amsterdam', '🇳🇱 هلند - آمستردام')">
-        🇳🇱 هلند - آمستردام
-    </button>
-    <button class="location-btn" onclick="generateAndCopy('Turkey-Istanbul', '🇹🇷 ترکیه - استانبول')">
-        🇹🇷 ترکیه - استانبول
-    </button>
+    <div class="container">
+        <h1>WireGuard Config Generator</h1>
+        <p>کلیک کن → ۳۰ دقیقه کانفیگ بگیر</p>
 
-    <div id="loading">در حال تولید کانفیگ... لطفاً صبر کنید (تا ۵ دقیقه).</div>
-    <div id="error"></div>
-    <div id="message">کانفیگ شما کپی شد! حالا می‌توانید آن را در WireGuard استفاده کنید.</div>
+        <button onclick="generate('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
+        <button onclick="generate('UK - London')">🇬🇧 UK - London</button>
+        <button onclick="generate('Germany - Frankfurt')">🇩🇪 Germany - Frankfurt</button>
+        <button onclick="generate('Netherlands - Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
+        <button onclick="generate('Turkey - Istanbul')">🇹🇷 Turkey - Istanbul</button>
+
+        <div id="loading" class="loading">در حال تولید کانفیگ... لطفاً صبر کنید (حدود ۳۰ ثانیه)</div>
+        <div id="result" class="config" style="display:none;">
+            <pre id="config-text"></pre>
+            <button class="copy-btn" onclick="copyConfig()">کپی کانفیگ</button>
+        </div>
+    </div>
 
     <script>
-        async function generateAndCopy(locationId, locationName) {
-            const token = prompt('لطفاً GitHub Personal Access Token (repo scope) خود را وارد کنید:');
-            if (!token) {
-                showError('توکن الزامی است!');
-                return;
-            }
+        const TOKEN = '${{ secrets.YOUR_GITHUB_TOKEN }}'; // از GitHub Pages env میاد
 
-            const repo = 'sinavm/wireguard';
-            const payload = {
-                ref: 'gh-pages',
-                inputs: { location: locationId }
-            };
+        async function generate(location) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
 
-            showLoading(true);
+            const owner = 'sinavm';
+            const repo = 'wireguard';
+            const workflow_id = 'generate-config.yml';
 
             try {
-                // Dispatch workflow
-                const dispatchResponse = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/generate-config.yml/dispatches`, {
+                const dispatchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/dispatches`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json',
-                        'X-GitHub-Api-Version': '2022-11-28',
-                        'User-Agent': 'WireGuard-Generator'
+                        'Authorization': `token ${TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        ref: 'main',
+                        inputs: { location: location }
+                    })
                 });
 
-                if (!dispatchResponse.ok) {
-                    throw new Error('خطا در ارسال workflow. توکن یا repo را چک کنید.');
-                }
+                if (!dispatchRes.ok) throw new Error('Failed to trigger workflow');
 
-                // Poll for workflow completion (every 10s, up to 5min)
-                let runId = null;
-                let attempts = 0;
-                const maxAttempts = 30;
+                const run = await pollLatestRun(owner, repo);
+                if (!run) throw new Error('No run found');
 
-                while (attempts < maxAttempts) {
-                    const runsResponse = await fetch(`https://api.github.com/repos/${repo}/actions/runs?event=workflow_dispatch&status=in_progress,completed&per_page=1`, {
-                        headers: { 
-                            'Authorization': `token ${token}`, 
-                            'User-Agent': 'WireGuard-Generator',
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-                    const runsData = await runsResponse.json();
+                const jobs = await fetchJobs(run.jobs_url, TOKEN);
+                const job = jobs.jobs.find(j => j.name === 'generate');
+                if (!job) throw new Error('Job not found');
 
-                    if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
-                        const latestRun = runsData.workflow_runs[0];
-                        if (latestRun.head_branch === 'gh-pages' && latestRun.event === 'workflow_dispatch') {
-                            runId = latestRun.id;
-                            if (latestRun.status === 'completed' && latestRun.conclusion === 'success') {
-                                break;
-                            } else if (latestRun.conclusion === 'failure') {
-                                throw new Error('Workflow با خطا تمام شد. لاگ‌ها را چک کنید.');
-                            }
-                        }
-                    }
+                const logs = await fetchLogs(job.logs_url, TOKEN);
+                const config = extractConfigFromLogs(logs);
 
-                    await new Promise(resolve => setTimeout(resolve, 10000));
-                    attempts++;
-                }
-
-                if (!runId) {
-                    throw new Error('Workflow اجرا نشد یا timeout. دستی از Actions چک کنید.');
-                }
-
-                // Fetch step summary for config (GitHub API for run summary)
-                const summaryResponse = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}`, {
-                    headers: { 
-                        'Authorization': `token ${token}`, 
-                        'User-Agent': 'WireGuard-Generator'
-                    }
-                });
-                const runData = await summaryResponse.json();
-                let config = '';
-
-                // Parse from annotations or fallback to placeholder
-                if (runData.annotations_url) {
-                    // Fetch annotations (logs/summary)
-                    const annotationsResponse = await fetch(runData.annotations_url, {
-                        headers: { 'Authorization': `token ${token}` }
-                    });
-                    const annotations = await annotationsResponse.json();
-                    // Extract config from summary (look for ```conf block)
-                    config = extractConfigFromAnnotations(annotations);
-                }
-
-                if (!config) {
-                    config = generatePlaceholderConfig(locationId);  // Fallback
-                    console.warn('Using placeholder; real parse failed.');
-                }
-
-                // Copy to clipboard
-                await navigator.clipboard.writeText(config).catch(() => {
-                    // Fallback for older browsers
-                    const textArea = document.createElement('textarea');
-                    textArea.value = config;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textArea);
-                });
-
-                document.getElementById('message').textContent = `کانفیگ ${locationName} کپی شد! (معتبر برای ۳۰ دقیقه)`;
-                showMessage();
-
-            } catch (error) {
-                showError('خطا: ' + error.message + '\nActions را دستی چک کنید: https://github.com/sinavm/wireguard/actions');
+                document.getElementById('config-text').textContent = config;
+                document.getElementById('result').style.display = 'block';
+            } catch (err) {
+                alert('خطا: ' + err.message);
             } finally {
-                showLoading(false);
+                document.getElementById('loading').style.display = 'none';
             }
         }
 
-        function extractConfigFromAnnotations(annotations) {
-            // Simple parse: find ```conf ... ``` block
-            for (let ann of annotations) {
-                if (ann.message && ann.message.includes('```conf') && ann.message.includes('```')) {
-                    const match = ann.message.match(/```conf\s*([\s\S]*?)```/);
-                    if (match) return match[1].trim();
+        async function pollLatestRun(owner, repo) {
+            for (let i = 0; i < 30; i++) {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`, {
+                    headers: { 'Authorization': `token ${TOKEN}` }
+                });
+                const data = await res.json();
+                if (data.workflow_runs && data.workflow_runs[0].status === 'completed') {
+                    return data.workflow_runs[0];
                 }
+                await new Promise(r => setTimeout(r, 3000));
             }
-            return '';
+            return null;
         }
 
-        function generatePlaceholderConfig(locationId) {
-            const configs = {
-                'UAE-Dubai': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = ae-dubai.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'UK-London': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = gb-london.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Germany-Frankfurt': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = de-frankfurt.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Netherlands-Amsterdam': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = nl-amsterdam.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Turkey-Istanbul': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = tr-istanbul.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`
-            };
-            return configs[locationId] || '[ERROR: Config not generated]';
+        async function fetchJobs(jobs_url, token) {
+            const res = await fetch(jobs_url, { headers: { 'Authorization': `token ${token}` } });
+            return await res.json();
         }
 
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        async function fetchLogs(logs_url, token) {
+            const res = await fetch(logs_url, { headers: { 'Authorization': `token ${token}` } });
+            return await res.text();
         }
 
-        function showMessage() {
-            const msg = document.getElementById('message');
-            msg.style.display = 'block';
-            setTimeout(() => { msg.style.display = 'none'; }, 5000);
+        function extractConfigFromLogs(logs) {
+            const start = logs.indexOf('[Interface]');
+            const end = logs.indexOf('\n\n', start);
+            return logs.substring(start, end > start ? end : undefined).trim();
         }
 
-        function showError(msg) {
-            const errDiv = document.getElementById('error');
-            errDiv.textContent = msg;
-            errDiv.style.display = 'block';
-            setTimeout(() => { errDiv.style.display = 'none'; }, 10000);
+        function copyConfig() {
+            const text = document.getElementById('config-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('کانفیگ کپی شد!');
+            });
         }
     </script>
 </body>
