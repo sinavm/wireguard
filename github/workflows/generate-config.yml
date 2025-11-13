@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Location for config'
+        description: 'Location'
         required: true
 
 jobs:
@@ -13,51 +13,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Set env based on location
-        id: set-env
+      - name: Set Location Variables
+        id: loc
         run: |
           case "${{ inputs.location }}" in
             "UAE - Dubai")
-              echo "PUREVPN_SERVER_COUNTRY=AE" >> $GITHUB_ENV
-              echo "PUREVPN_SERVER_CITY=2776" >> $GITHUB_ENV  # Adjust if needed
+              echo "country=AE" >> $GITHUB_OUTPUT
+              echo "city=2776" >> $GITHUB_OUTPUT
               ;;
             "UK - London")
-              echo "PUREVPN_SERVER_COUNTRY=GB" >> $GITHUB_ENV
-              echo "PUREVPN_SERVER_CITY=7041" >> $GITHUB_ENV  # Adjust if needed
+              echo "country=GB" >> $GITHUB_OUTPUT
+              echo "city=7041" >> $GITHUB_OUTPUT
               ;;
             "Germany - Frankfurt")
-              echo "PUREVPN_SERVER_COUNTRY=DE" >> $GITHUB_ENV
-              echo "PUREVPN_SERVER_CITY=2762" >> $GITHUB_ENV
+              echo "country=DE" >> $GITHUB_OUTPUT
+              echo "city=2762" >> $GITHUB_OUTPUT
               ;;
             "Netherlands - Amsterdam")
-              echo "PUREVPN_SERVER_COUNTRY=NL" >> $GITHUB_ENV
-              echo "PUREVPN_SERVER_CITY=2763" >> $GITHUB_ENV  # Adjust if needed
+              echo "country=NL" >> $GITHUB_OUTPUT
+              echo "city=2763" >> $GITHUB_OUTPUT
               ;;
             "Turkey - Istanbul")
-              echo "PUREVPN_SERVER_COUNTRY=TR" >> $GITHUB_ENV
-              echo "PUREVPN_SERVER_CITY=2765" >> $GITHUB_ENV  # Adjust if needed
+              echo "country=TR" >> $GITHUB_OUTPUT
+              echo "city=2765" >> $GITHUB_OUTPUT
               ;;
           esac
 
-      - name: Run fetcher
+      - name: Generate Config
         env:
           PUREVPN_USERNAME: ${{ secrets.PUREVPN_USERNAME }}
           PUREVPN_PASSWORD: ${{ secrets.PUREVPN_PASSWORD }}
           PUREVPN_SUBSCRIPTION_USERNAME: ${{ secrets.PUREVPN_SUB_USER }}
+          PUREVPN_SERVER_COUNTRY: ${{ steps.loc.outputs.country }}
+          PUREVPN_SERVER_CITY: ${{ steps.loc.outputs.city }}
           PUREVPN_DEVICE: linux
           PUREVPN_WIREGUARD_FILE: wg0.conf
-        run: go run cmd/wireguard full
+        run: |
+          go run cmd/wireguard full
 
-      - name: Display config in logs
-        run: cat wg0.conf
+      - name: Output Config
+        run: |
+          echo "=== WireGuard Config ==="
+          cat wg0.conf
+          echo "=== End of Config ==="
 
-      - name: Upload artifact
+      - name: Upload Config
         uses: actions/upload-artifact@v4
         with:
-          name: wireguard-config
+          name: wg0.conf
           path: wg0.conf
