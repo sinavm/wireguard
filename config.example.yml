@@ -1,0 +1,9 @@
+username: your-email@example.com
+password: your-password
+server:
+  country: DE
+  city: 2762
+subscription:
+  username: purevpn-your-sub-user
+wireguardFile: wg0.conf
+device: linux

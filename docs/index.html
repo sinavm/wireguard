@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PureVPN WireGuard Config Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f4f4f4; }
+        button { display: block; margin: 20px auto; padding: 15px 30px; font-size: 18px; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: white; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Select a Location for WireGuard Config (30 min valid)</h1>
+    <p>Click a button to dispatch the workflow. Enter your GitHub token when prompted. Check the Actions tab for logs to copy the config.</p>
+    <button onclick="generateConfig('UAE-Dubai')">🇦🇪 UAE - Dubai</button>
+    <button onclick="generateConfig('UK-London')">🇬🇧 UK - London</button>
+    <button onclick="generateConfig('Germany-Frankfurt')">🇩🇪 Germany - Frankfurt</button>
+    <button onclick="generateConfig('Netherlands-Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
+    <button onclick="generateConfig('Turkey-Istanbul')">🇹🇷 Turkey - Istanbul</button>
+
+    <script>
+        function generateConfig(location) {
+            const token = prompt('Enter your GitHub Personal Access Token (repo scope):');
+            if (!token) {
+                alert('Token required!');
+                return;
+            }
+            const repo = 'yourusername/wireguard-improved';  // Replace with your repo
+            const payload = {
+                ref: 'gh-pages',
+                inputs: { location: location }
+            };
+            fetch(`https://api.github.com/repos/${repo}/actions/workflows/generate-config.yml/dispatches`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json',
+                    'X-GitHub-Api-Version': '2022-11-28',
+                    'User-Agent': 'WireGuard-Generator'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert(`Workflow dispatched for ${location}! Go to your repo > Actions tab > This workflow > Latest run > Logs to copy the config.`);
+                } else {
+                    alert('Error dispatching workflow. Check token/repo name.');
+                }
+            })
+            .catch(error => {
+                alert('Network error: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>
