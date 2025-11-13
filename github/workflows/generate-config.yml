@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Location'
+        description: 'Location for config'
         required: true
+        type: string
 
 jobs:
   generate:
@@ -21,7 +22,7 @@ jobs:
       - name: Set Location Variables
         id: loc
         run: |
-          case "${{ inputs.location }}" in
+          case "${{ github.event.inputs.location }}" in
             "UAE - Dubai")
               echo "country=AE" >> $GITHUB_OUTPUT
               echo "city=2776" >> $GITHUB_OUTPUT
@@ -41,6 +42,10 @@ jobs:
             "Turkey - Istanbul")
               echo "country=TR" >> $GITHUB_OUTPUT
               echo "city=2765" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "country=DE" >> $GITHUB_OUTPUT
+              echo "city=2762" >> $GITHUB_OUTPUT
               ;;
           esac
 
