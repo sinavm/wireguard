@@ -66,10 +66,9 @@ jobs:
         env:
           PUREVPN_USERNAME: ${{ secrets.PUREVPN_USERNAME }}
           PUREVPN_PASSWORD: ${{ secrets.PUREVPN_PASSWORD }}
-          PUREVPN_SUB_USER: ${{ secrets.PUREVPN_SUB_USER }}
+          PUREVPN_SUBSCRIPTION_USERNAME: ${{ secrets.PUREVPN_SUB_USER }}
           PUREVPN_SERVER_COUNTRY: ${{ steps.vars.outputs.country }}
           PUREVPN_SERVER_CITY: ${{ steps.vars.outputs.city }}
-          PUREVPN_SUBSCRIPTION_USERNAME: ${{ secrets.PUREVPN_SUB_USER }}
           PUREVPN_DEVICE: linux
           PUREVPN_WIREGUARD_FILE: /tmp/wg0.conf
         run: |
