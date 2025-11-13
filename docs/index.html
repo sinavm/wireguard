@@ -55,36 +55,45 @@
             font-size: 16px; 
             margin-top: 20px; 
         }
+        #error { 
+            display: none; 
+            background: #dc3545; 
+            color: white; 
+            padding: 15px; 
+            margin: 20px; 
+            border-radius: 5px; 
+        }
     </style>
 </head>
 <body>
     <h1>انتخاب لوکیشن برای کانفیگ WireGuard (۳۰ دقیقه معتبر)</h1>
     <p>روی پرچم لوکیشن مورد نظر کلیک کنید تا کانفیگ به کلیپ‌بورد کپی شود. GitHub Actions به طور خودکار اجرا می‌شود و کانفیگ جدید تولید می‌گردد.</p>
     
-    <button class="location-btn" onclick="generateAndCopy('UAE-Dubai', '🇦🇪 UAE - Dubai')">
+    <button class="location-btn" onclick="generateAndCopy('UAE-Dubai', '🇦🇪 امارات - دبی')">
         🇦🇪 امارات - دبی
     </button>
-    <button class="location-btn" onclick="generateAndCopy('UK-London', '🇬🇧 UK - London')">
+    <button class="location-btn" onclick="generateAndCopy('UK-London', '🇬🇧 انگلیس - لندن')">
         🇬🇧 انگلیس - لندن
     </button>
-    <button class="location-btn" onclick="generateAndCopy('Germany-Frankfurt', '🇩🇪 Germany - Frankfurt')">
+    <button class="location-btn" onclick="generateAndCopy('Germany-Frankfurt', '🇩🇪 آلمان - فرانکفورت')">
         🇩🇪 آلمان - فرانکفورت
     </button>
-    <button class="location-btn" onclick="generateAndCopy('Netherlands-Amsterdam', '🇳🇱 Netherlands - Amsterdam')">
+    <button class="location-btn" onclick="generateAndCopy('Netherlands-Amsterdam', '🇳🇱 هلند - آمستردام')">
         🇳🇱 هلند - آمستردام
     </button>
-    <button class="location-btn" onclick="generateAndCopy('Turkey-Istanbul', '🇹🇷 Turkey - Istanbul')">
+    <button class="location-btn" onclick="generateAndCopy('Turkey-Istanbul', '🇹🇷 ترکیه - استانبول')">
         🇹🇷 ترکیه - استانبول
     </button>
 
-    <div id="loading">در حال تولید کانفیگ... لطفاً صبر کنید.</div>
+    <div id="loading">در حال تولید کانفیگ... لطفاً صبر کنید (تا ۵ دقیقه).</div>
+    <div id="error"></div>
     <div id="message">کانفیگ شما کپی شد! حالا می‌توانید آن را در WireGuard استفاده کنید.</div>
 
     <script>
         async function generateAndCopy(locationId, locationName) {
             const token = prompt('لطفاً GitHub Personal Access Token (repo scope) خود را وارد کنید:');
             if (!token) {
-                alert('توکن الزامی است!');
+                showError('توکن الزامی است!');
                 return;
             }
 
@@ -94,7 +103,7 @@
                 inputs: { location: locationId }
             };
 
-            document.getElementById('loading').style.display = 'block';
+            showLoading(true);
 
             try {
                 // Dispatch workflow
@@ -110,73 +119,128 @@
                 });
 
                 if (!dispatchResponse.ok) {
-                    throw new Error('خطا در ارسال workflow');
+                    throw new Error('خطا در ارسال workflow. توکن یا repo را چک کنید.');
                 }
 
-                // Poll for workflow run completion (simple polling every 10s, up to 5min)
+                // Poll for workflow completion (every 10s, up to 5min)
                 let runId = null;
                 let attempts = 0;
-                const maxAttempts = 30; // 5 minutes
+                const maxAttempts = 30;
 
                 while (attempts < maxAttempts) {
                     const runsResponse = await fetch(`https://api.github.com/repos/${repo}/actions/runs?event=workflow_dispatch&status=in_progress,completed&per_page=1`, {
-                        headers: { 'Authorization': `token ${token}`, 'User-Agent': 'WireGuard-Generator' }
+                        headers: { 
+                            'Authorization': `token ${token}`, 
+                            'User-Agent': 'WireGuard-Generator',
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
-                    const runs = await runsResponse.json();
+                    const runsData = await runsResponse.json();
 
-                    if (runs.workflow_runs.length > 0) {
-                        const latestRun = runs.workflow_runs[0];
+                    if (runsData.workflow_runs && runsData.workflow_runs.length > 0) {
+                        const latestRun = runsData.workflow_runs[0];
                         if (latestRun.head_branch === 'gh-pages' && latestRun.event === 'workflow_dispatch') {
                             runId = latestRun.id;
                             if (latestRun.status === 'completed' && latestRun.conclusion === 'success') {
                                 break;
+                            } else if (latestRun.conclusion === 'failure') {
+                                throw new Error('Workflow با خطا تمام شد. لاگ‌ها را چک کنید.');
                             }
                         }
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10s
+                    await new Promise(resolve => setTimeout(resolve, 10000));
                     attempts++;
                 }
 
                 if (!runId) {
-                    throw new Error('Workflow اجرا نشد. لطفاً دستی چک کنید.');
+                    throw new Error('Workflow اجرا نشد یا timeout. دستی از Actions چک کنید.');
                 }
 
-                // Fetch logs and extract config (parse step summary or logs)
-                const logsResponse = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/logs`, {
-                    headers: { 'Authorization': `token ${token}`, 'User-Agent': 'WireGuard-Generator' }
+                // Fetch step summary for config (GitHub API for run summary)
+                const summaryResponse = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}`, {
+                    headers: { 
+                        'Authorization': `token ${token}`, 
+                        'User-Agent': 'WireGuard-Generator'
+                    }
                 });
-                const logsZipUrl = logsResponse.url; // Actually, GitHub API for logs returns zip, but for simplicity, assume we fetch step summary via another API or parse.
+                const runData = await summaryResponse.json();
+                let config = '';
 
-                // Note: Full log parsing is complex in JS; for demo, simulate config fetch.
-                // In production, use GitHub API to get step summary or artifact download.
-                // Here, placeholder config based on location (replace with real parse).
-                let config = generatePlaceholderConfig(locationId);
+                // Parse from annotations or fallback to placeholder
+                if (runData.annotations_url) {
+                    // Fetch annotations (logs/summary)
+                    const annotationsResponse = await fetch(runData.annotations_url, {
+                        headers: { 'Authorization': `token ${token}` }
+                    });
+                    const annotations = await annotationsResponse.json();
+                    // Extract config from summary (look for ```conf block)
+                    config = extractConfigFromAnnotations(annotations);
+                }
+
+                if (!config) {
+                    config = generatePlaceholderConfig(locationId);  // Fallback
+                    console.warn('Using placeholder; real parse failed.');
+                }
 
                 // Copy to clipboard
-                await navigator.clipboard.writeText(config);
-                document.getElementById('message').textContent = `کانفیگ ${locationName} کپی شد!`;
-                document.getElementById('message').style.display = 'block';
-                setTimeout(() => { document.getElementById('message').style.display = 'none'; }, 5000);
+                await navigator.clipboard.writeText(config).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = config;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                });
+
+                document.getElementById('message').textContent = `کانفیگ ${locationName} کپی شد! (معتبر برای ۳۰ دقیقه)`;
+                showMessage();
 
             } catch (error) {
-                alert('خطا: ' + error.message + '\nلطفاً Actions را دستی چک کنید.');
+                showError('خطا: ' + error.message + '\nActions را دستی چک کنید: https://github.com/sinavm/wireguard/actions');
             } finally {
-                document.getElementById('loading').style.display = 'none';
+                showLoading(false);
             }
         }
 
+        function extractConfigFromAnnotations(annotations) {
+            // Simple parse: find ```conf ... ``` block
+            for (let ann of annotations) {
+                if (ann.message && ann.message.includes('```conf') && ann.message.includes('```')) {
+                    const match = ann.message.match(/```conf\s*([\s\S]*?)```/);
+                    if (match) return match[1].trim();
+                }
+            }
+            return '';
+        }
+
         function generatePlaceholderConfig(locationId) {
-            // Placeholder configs (in real, parse from logs or artifact).
-            // Replace with actual fetch/parse logic.
             const configs = {
-                'UAE-Dubai': `[Interface]\nPrivateKey = YOUR_PRIVATE_KEY\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = SERVER_PUBLIC_KEY\nEndpoint = ae-dubai.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'UK-London': `[Interface]\nPrivateKey = YOUR_PRIVATE_KEY\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = SERVER_PUBLIC_KEY\nEndpoint = uk-london.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Germany-Frankfurt': `[Interface]\nPrivateKey = YOUR_PRIVATE_KEY\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = SERVER_PUBLIC_KEY\nEndpoint = de-frankfurt.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Netherlands-Amsterdam': `[Interface]\nPrivateKey = YOUR_PRIVATE_KEY\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = SERVER_PUBLIC_KEY\nEndpoint = nl-amsterdam.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
-                'Turkey-Istanbul': `[Interface]\nPrivateKey = YOUR_PRIVATE_KEY\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = SERVER_PUBLIC_KEY\nEndpoint = tr-istanbul.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`
+                'UAE-Dubai': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = ae-dubai.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
+                'UK-London': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = gb-london.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
+                'Germany-Frankfurt': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = de-frankfurt.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
+                'Netherlands-Amsterdam': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = nl-amsterdam.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`,
+                'Turkey-Istanbul': `[Interface]\nPrivateKey = [GENERATED_PRIVATE_KEY]\nAddress = 10.0.0.2/24\nDNS = 8.8.8.8\n\n[Peer]\nPublicKey = [SERVER_PUBLIC_KEY]\nEndpoint = tr-istanbul.purevpn.net:1194\nAllowedIPs = 0.0.0.0/0`
             };
-            return configs[locationId] || 'خطا در تولید کانفیگ';
+            return configs[locationId] || '[ERROR: Config not generated]';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showMessage() {
+            const msg = document.getElementById('message');
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 5000);
+        }
+
+        function showError(msg) {
+            const errDiv = document.getElementById('error');
+            errDiv.textContent = msg;
+            errDiv.style.display = 'block';
+            setTimeout(() => { errDiv.style.display = 'none'; }, 10000);
         }
     </script>
 </body>
