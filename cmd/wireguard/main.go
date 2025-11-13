@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"yourusername.com/wireguard-improved/internal/app"
+	"github.com/sinavm/wireguard/internal/app"
 )
 
 var rootCmd = &cobra.Command{
