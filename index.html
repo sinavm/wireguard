@@ -1,5 +1,49 @@
-git checkout -b gh-pages
-mkdir -p docs
-git add docs/index.html
-git commit -m "Add UI index.html for Pages"
-git push origin gh-pages
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PureVPN WireGuard Config Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>Select Location for WireGuard Config</h1>
+    <button onclick="triggerWorkflow('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
+    <button onclick="triggerWorkflow('UK - London')">🇬🇧 UK - London</button>
+    <button onclick="triggerWorkflow('Germany - Frankfurt')">🇩🇪 Germany - Frankfurt</button>
+    <button onclick="triggerWorkflow('Netherlands - Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
+    <button onclick="triggerWorkflow('Turkey - Istanbul')">🇹🇷 Turkey - Istanbul</button>
+
+    <script>
+        async function triggerWorkflow(location) {
+            const token = prompt('Enter your GitHub Personal Access Token:');
+            if (!token) return;
+
+            const owner = 'sinavm';
+            const repo = 'wireguard';
+            const workflow_id = 'generate-config.yml';
+
+            const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/dispatches`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    ref: 'main',
+                    inputs: { location: location }
+                })
+            });
+
+            if (response.ok) {
+                alert('Workflow triggered! Check Actions logs for config and copy it.');
+            } else {
+                alert('Error triggering workflow.');
+            }
+        }
+    </script>
+</body>
+</html>
