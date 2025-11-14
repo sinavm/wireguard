@@ -1,3 +1,4 @@
+# .github/workflows/generate-config.yml
 name: Generate WireGuard Config
 
 on:
@@ -25,9 +26,9 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Build & Run
+      - name: Run config generator
         env:
-          INPUT_LOCATION: ${{ github.event.inputs.location }}
+          INPUT_LOCATION: ${{ inputs.location }}
           PUREVPN_USERNAME: ${{ secrets.PUREVPN_USERNAME }}
           PUREVPN_PASSWORD: ${{ secrets.PUREVPN_PASSWORD }}
           PUREVPN_SUB_USER: ${{ secrets.PUREVPN_SUB_USER }}
