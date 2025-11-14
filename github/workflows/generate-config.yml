@@ -4,71 +4,43 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Location for config'
+        description: 'Server Location'
         required: true
-        type: string
+        default: 'UAE - Dubai'
+        type: choice
+        options:
+        - UAE - Dubai
+        - UK - London
+        - Germany - Frankfurt
+        - Netherlands - Amsterdam
+        - Turkey - Istanbul
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Set Location Variables
-        id: loc
-        run: |
-          case "${{ github.event.inputs.location }}" in
-            "UAE - Dubai")
-              echo "country=AE" >> $GITHUB_OUTPUT
-              echo "city=2776" >> $GITHUB_OUTPUT
-              ;;
-            "UK - London")
-              echo "country=GB" >> $GITHUB_OUTPUT
-              echo "city=7041" >> $GITHUB_OUTPUT
-              ;;
-            "Germany - Frankfurt")
-              echo "country=DE" >> $GITHUB_OUTPUT
-              echo "city=2762" >> $GITHUB_OUTPUT
-              ;;
-            "Netherlands - Amsterdam")
-              echo "country=NL" >> $GITHUB_OUTPUT
-              echo "city=2763" >> $GITHUB_OUTPUT
-              ;;
-            "Turkey - Istanbul")
-              echo "country=TR" >> $GITHUB_OUTPUT
-              echo "city=2765" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "country=DE" >> $GITHUB_OUTPUT
-              echo "city=2762" >> $GITHUB_OUTPUT
-              ;;
-          esac
-
-      - name: Generate Config
+      - name: Build and Run Config Generator
         env:
+          INPUT_LOCATION: ${{ github.event.inputs.location || 'UAE - Dubai' }}
           PUREVPN_USERNAME: ${{ secrets.PUREVPN_USERNAME }}
           PUREVPN_PASSWORD: ${{ secrets.PUREVPN_PASSWORD }}
-          PUREVPN_SUBSCRIPTION_USERNAME: ${{ secrets.PUREVPN_SUB_USER }}
-          PUREVPN_SERVER_COUNTRY: ${{ steps.loc.outputs.country }}
-          PUREVPN_SERVER_CITY: ${{ steps.loc.outputs.city }}
-          PUREVPN_DEVICE: linux
-          PUREVPN_WIREGUARD_FILE: wg0.conf
+          PUREVPN_SUB_USER: ${{ secrets.PUREVPN_SUB_USER }}
         run: |
-          go run cmd/wireguard full
+          go mod tidy
+          go run main.go
 
-      - name: Output Config
-        run: |
-          echo "=== WireGuard Config ==="
-          cat wg0.conf
-          echo "=== End of Config ==="
-
-      - name: Upload Config
+      # Optional: Upload config as artifact (public downloadable)
+      - name: Upload Config Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: wg0.conf
-          path: wg0.conf
+          name: wireguard-config-${{ github.event.inputs.location }}
+          path: config.txt  # اگه file بنویسی، иначе logs رو save کن
