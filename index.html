@@ -48,13 +48,15 @@
     </div>
 
     <script>
-        let globalToken = '';
+        let globalToken = '';  // اگر می‌خوای hardcode کنی، اینجا بگذار: let globalToken = 'ghp_YourTokenHere'; (اما ناامنه!)
 
         async function generate(location) {
-            globalToken = prompt('Enter your GitHub Personal Access Token (ghp_...):');
             if (!globalToken) {
-                alert('توکن وارد نشده! دوباره امتحان کن.');
-                return;
+                globalToken = prompt('Enter your GitHub Personal Access Token (ghp_...):');
+                if (!globalToken) {
+                    alert('توکن وارد نشده! دوباره امتحان کن.');
+                    return;
+                }
             }
 
             document.getElementById('loading').style.display = 'block';
@@ -92,7 +94,7 @@
                 if (run.conclusion !== 'success') throw new Error(`Workflow failed: ${run.conclusion}. Check Actions tab.`);
 
                 // Get logs
-                const logs = await fetchLogs(run.logs_url, globalToken);
+                const logs = await fetchLogs(run.id, globalToken);
                 const config = extractConfigFromLogs(logs);
 
                 if (!config) throw new Error('Config not found in logs. Check Actions tab.');
@@ -115,6 +117,7 @@
                         'Accept': 'application/vnd.github.v3+json'
                     }
                 });
+                if (!res.ok) throw new Error('Failed to poll runs');
                 const data = await res.json();
                 const latestRun = data.workflow_runs?.[0];
                 if (latestRun && latestRun.status === 'completed') {
@@ -125,24 +128,35 @@
             return null;
         }
 
-        async function fetchLogs(logsUrl, token) {
-            const res = await fetch(logsUrl, { 
+        async function fetchLogs(runId, token) {
+            // Get jobs
+            const jobsRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`, {
                 headers: { 
                     'Authorization': `token ${token}`,
                     'Accept': 'application/vnd.github.v3+json'
-                } 
+                }
             });
-            const data = await res.json();
-            if (!data.log_url) throw new Error('No log URL found');
-            const logRes = await fetch(data.log_url);
+            if (!jobsRes.ok) throw new Error(`Failed to fetch jobs: ${jobsRes.status}`);
+            const jobsData = await jobsRes.json();
+            if (jobsData.total_count === 0) throw new Error('No jobs found in run');
+
+            const job = jobsData.jobs[0];  // Assuming single job
+            // Get job logs (text, fetch follows redirect)
+            const logRes = await fetch(job.logs_url, {
+                headers: { 
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (!logRes.ok) throw new Error(`Failed to fetch logs: ${logRes.status}`);
             return await logRes.text();
         }
 
         function extractConfigFromLogs(logs) {
             const start = logs.indexOf('=== WireGuard Config ===');
-            const end = logs.indexOf('=== End of Config ===');
+            const end = logs.indexOf('=== End of Config ===', start);
             if (start === -1 || end === -1) return null;
-            return logs.substring(start + 23, end).trim();
+            return logs.substring(start + 24, end).trim();  // +24 برای رد کردن === WireGuard Config ===\n
         }
 
         function copyConfig() {
