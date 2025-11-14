@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,102 +10,64 @@ import (
 	"time"
 )
 
-type Config struct {
-	PrivateKey   string `json:"private_key"`
-	PublicKey    string `json:"public_key"`
-	Endpoint     string `json:"endpoint"`
-	AllowedIPs   string `json:"allowed_ips"`
-	DNS          string `json:"dns"`
-	PersistentKeepalive string `json:"persistent_keepalive"`
+type cfg struct {
+	PrivateKey string
+	PublicKey  string
+	Endpoint   string
+	DNS        string
 }
 
-
-func GenerateWireGuardKey() (privateKey, publicKey string, err error) {
-	privateKeyBytes := make([]byte, 32)
-	_, err = rand.Read(privateKeyBytes)
-	if err != nil {
-		return "", "", err
+func genKey() (priv, pub string, err error) {
+	b := make([]byte, 32)
+	if _, err = rand.Read(b); err != nil {
+		return
 	}
-	privateKey = base64.StdEncoding.EncodeToString(privateKeyBytes)
+	priv = base64.StdEncoding.EncodeToString(b)
 
-	publicKeyBytes := make([]byte, 32)
-
-	_, err = rand.Read(publicKeyBytes)
-	if err != nil {
-		return privateKey, "", err
+	// برای نمونه، public key را هم random می‌کنیم (در عمل از PureVPN می‌گیرید)
+	if _, err = rand.Read(b); err != nil {
+		return
 	}
-	publicKey = base64.StdEncoding.EncodeToString(publicKeyBytes)
-
-	return privateKey, publicKey, nil
+	pub = base64.StdEncoding.EncodeToString(b)
+	return
 }
 
-
-func GetServerConfig(location string) Config {
-
-	var endpoint, dns string
-	switch strings.ToLower(location) {
-	case "uae - dubai":
-		endpoint = "uae-dubai.purevpn.net:51820"
-		dns = "8.8.8.8"
-	case "uk - london":
-		endpoint = "uk-london.purevpn.net:51820"
-		dns = "8.8.4.4"
-	case "germany - frankfurt":
-		endpoint = "de-frankfurt.purevpn.net:51820"
-		dns = "1.1.1.1"
-	case "netherlands - amsterdam":
-		endpoint = "nl-amsterdam.purevpn.net:51820"
-		dns = "1.0.0.1"
-	case "turkey - istanbul":
-		endpoint = "tr-istanbul.purevpn.net:51820"
-		dns = "8.8.8.8"
-	default:
-		endpoint = "default.purevpn.net:51820"
-		dns = "8.8.8.8"
+func serverCfg(loc string) cfg {
+	// TODO: اینجا API PureVPN را با credentials صدا کنید
+	m := map[string]struct{ ep, dns string }{
+		"uae - dubai":          {"uae-dubai.purevpn.net:51820", "8.8.8.8"},
+		"uk - london":          {"uk-london.purevpn.net:51820", "8.8.4.4"},
+		"germany - frankfurt":  {"de-frankfurt.purevpn.net:51820", "1.1.1.1"},
+		"netherlands - amsterdam": {"nl-amsterdam.purevpn.net:51820", "1.0.0.1"},
+		"turkey - istanbul":    {"tr-istanbul.purevpn.net:51820", "8.8.8.8"},
 	}
-
-	privateKey, publicKey, err := GenerateWireGuardKey()
-	if err != nil {
-		log.Fatal(err)
+	l := strings.ToLower(loc)
+	if v, ok := m[l]; ok {
+		return cfg{Endpoint: v.ep, DNS: v.dns}
 	}
-
-	return Config{
-		PrivateKey:   privateKey,
-		PublicKey:    publicKey,
-		Endpoint:     endpoint,
-		AllowedIPs:   "0.0.0.0/0",
-		DNS:          dns,
-		PersistentKeepalive: "25",
-	}
+	return cfg{Endpoint: "default.purevpn.net:51820", DNS: "8.8.8.8"}
 }
 
 func main() {
-	location := os.Getenv("INPUT_LOCATION")
-	if location == "" {
+	loc := os.Getenv("INPUT_LOCATION")
+	if loc == "" {
 		log.Fatal("INPUT_LOCATION not set")
 	}
 
+	// PureVPN credentials (فقط برای API واقعی)
+	_ = os.Getenv("PUREVPN_USERNAME")
+	_ = os.Getenv("PUREVPN_PASSWORD")
+	_ = os.Getenv("PUREVPN_SUB_USER")
 
-	username := os.Getenv("PUREVPN_USERNAME")
-	password := os.Getenv("PUREVPN_PASSWORD")
-	subUser := os.Getenv("PUREVPN_SUB_USER")
-	fmt.Printf("Using creds: %s (sub: %s) for location: %s\n", username, subUser, location)
-
-
-	config := GetServerConfig(location)
+	priv, pub, err := genKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	c := serverCfg(loc)
 
 	fmt.Println("=== WireGuard Config ===")
-	fmt.Printf("[Interface]\n")
-	fmt.Printf("PrivateKey = %s\n", config.PrivateKey)
-	fmt.Printf("Address = 10.0.0.2/32\n")  // Sample IP
-	fmt.Printf("DNS = %s\n", config.DNS)
-
-	fmt.Printf("\n[Peer]\n")
-	fmt.Printf("PublicKey = %s\n", config.PublicKey)  // Server public key - از PureVPN بگیر
-	fmt.Printf("Endpoint = %s\n", config.Endpoint)
-	fmt.Printf("AllowedIPs = %s\n", config.AllowedIPs)
-	fmt.Printf("PersistentKeepalive = %s\n", config.PersistentKeepalive)
+	fmt.Printf("[Interface]\nPrivateKey = %s\nAddress = 10.0.0.2/32\nDNS = %s\n\n", priv, c.DNS)
+	fmt.Printf("[Peer]\nPublicKey = %s\nEndpoint = %s\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n", pub, c.Endpoint)
 	fmt.Println("=== End of Config ===")
-
-	fmt.Printf("Config valid for 30 minutes from %s\n", time.Now().Format(time.RFC1123))
+	fmt.Printf("Config valid until %s\n", time.Now().Add(30*time.Minute).Format(time.RFC1123))
 }
