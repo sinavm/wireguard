@@ -4,43 +4,33 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: 'Server Location'
+        description: 'Server location'
         required: true
-        default: 'UAE - Dubai'
         type: choice
         options:
-        - UAE - Dubai
-        - UK - London
-        - Germany - Frankfurt
-        - Netherlands - Amsterdam
-        - Turkey - Istanbul
+          - UAE - Dubai
+          - UK - London
+          - Germany - Frankfurt
+          - Netherlands - Amsterdam
+          - Turkey - Istanbul
 
 jobs:
-  generate:
+  gen:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Build and Run Config Generator
+      - name: Build & Run
         env:
-          INPUT_LOCATION: ${{ github.event.inputs.location || 'UAE - Dubai' }}
+          INPUT_LOCATION: ${{ github.event.inputs.location }}
           PUREVPN_USERNAME: ${{ secrets.PUREVPN_USERNAME }}
           PUREVPN_PASSWORD: ${{ secrets.PUREVPN_PASSWORD }}
           PUREVPN_SUB_USER: ${{ secrets.PUREVPN_SUB_USER }}
         run: |
           go mod tidy
           go run main.go
-
-      # Optional: Upload config as artifact (public downloadable)
-      - name: Upload Config Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: wireguard-config-${{ github.event.inputs.location }}
-          path: config.txt  # اگه file بنویسی، иначе logs رو save کن
