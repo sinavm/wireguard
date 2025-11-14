@@ -16,18 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # جایگزینی توکن در index.html
       - name: Inject GH_TOKEN into index.html
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "ERROR: GH_TOKEN secret is missing!"
+            exit 1
+          fi
           sed -i "s/%%GH_TOKEN%%/$GH_TOKEN/g" index.html
+          echo "Token injected into index.html"
 
-      # ساخت پوشه _site (GitHub Pages نیاز داره)
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # آپلود artifact (شامل index.html تغییر یافته)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -41,7 +43,6 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
