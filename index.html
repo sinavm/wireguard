@@ -27,7 +27,7 @@
     <button onclick="gen('Netherlands - Amsterdam')">Netherlands - Amsterdam</button>
     <button onclick="gen('Turkey - Istanbul')">Turkey - Istanbul</button>
 
-    <div id="loading" class="loading">در حال تولید… (30‑60 ثانیه)</div>
+    <div id="loading" class="loading">در حال تولید… (30-60 ثانیه)</div>
     <div id="error" class="error"></div>
     <div id="result" style="display:none;margin-top:20px">
         <pre id="cfg"></pre>
@@ -35,9 +35,12 @@
     </div>
 </div>
 
+<!-- *** مهم: این باید اولین اسکریپت JS باشد *** -->
 <script>
-  // ← این خط توسط workflow جایگزین می‌شه
-  const GITHUB_TOKEN = '%%GH_TOKEN%%';
+  const GITHUB_TOKEN = '%%GH_TOKEN%%';  // این خط توسط workflow جایگزین می‌شود
+</script>
+
+<script>
   const owner = 'sinavm', repo = 'wireguard', wf = 'generate-config.yml';
 
   if (!GITHUB_TOKEN || GITHUB_TOKEN === '%%GH_TOKEN%%') {
@@ -52,7 +55,6 @@
     $('#result').style.display = 'none';
 
     try {
-      // 1. Trigger با توکن
       const d = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/dispatches`, {
         method: 'POST',
         headers: {
@@ -62,6 +64,7 @@
         },
         body: JSON.stringify({ ref: 'main', inputs: { location: loc } })
       });
+
       if (!d.ok) {
         const e = await d.json();
         throw new Error(e.message || `Trigger failed: ${d.status}`);
@@ -87,7 +90,6 @@
     }
   }
 
-  /* ---------- helpers ---------- */
   function $(s) { return document.querySelector(s); }
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -109,10 +111,11 @@
     const u = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${id}/logs`;
     const r = await fetch(u, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
     if (!r.ok) throw new Error('log fetch error');
-    // دنبال redirect به raw text
+
     const txt = await fetch(r.url.replace('api.github.com', 'raw.githubusercontent.com').replace('/repos/', '/'), {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
     }).then(t => t.text());
+
     return txt;
   }
 
