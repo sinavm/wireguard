@@ -30,7 +30,7 @@
 <body>
     <div class="container">
         <h1>WireGuard Config Generator</h1>
-        <p>کلیک کن → ۳۰ دقیقه کانفیگ بگیر (توکن رو وارد کن)</p>
+        <p>کلیک کن → ۳۰ دقیقه کانفیگ بگیر</p>
 
         <button onclick="generate('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
         <button onclick="generate('UK - London')">🇬🇧 UK - London</button>
@@ -48,24 +48,22 @@
     </div>
 
     <script>
-        let globalToken = '';  // اگر می‌خوای hardcode کنی، اینجا بگذار: let globalToken = 'ghp_YourTokenHere'; (اما ناامنه!)
+        const globalToken = '%%GITHUB_TOKEN%%';  // Placeholder - will be replaced during build with secret
+
+        if (!globalToken || globalToken === '%%GITHUB_TOKEN%%') {
+            document.getElementById('error').textContent = 'خطا: توکن تنظیم نشده. ریپو رو چک کن.';
+            document.getElementById('error').style.display = 'block';
+            return;
+        }
 
         async function generate(location) {
-            if (!globalToken) {
-                globalToken = prompt('Enter your GitHub Personal Access Token (ghp_...):');
-                if (!globalToken) {
-                    alert('توکن وارد نشده! دوباره امتحان کن.');
-                    return;
-                }
-            }
-
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
             document.getElementById('result').style.display = 'none';
 
             const owner = 'sinavm';
             const repo = 'wireguard';
-            const workflowFile = 'generate-config.yml';  // نام فایل workflow
+            const workflowFile = 'generate-config.yml';
 
             try {
                 // Trigger workflow
@@ -86,6 +84,9 @@
                     const errData = await dispatchRes.json();
                     throw new Error(`Workflow trigger failed: ${dispatchRes.status} - ${errData.message || 'Unknown error'}`);
                 }
+
+                // Short delay to let the run start
+                await new Promise(r => setTimeout(r, 5000));
 
                 // Poll for completion
                 const run = await pollLatestRun(owner, repo, globalToken);
@@ -156,7 +157,7 @@
             const start = logs.indexOf('=== WireGuard Config ===');
             const end = logs.indexOf('=== End of Config ===', start);
             if (start === -1 || end === -1) return null;
-            return logs.substring(start + 24, end).trim();  // +24 برای رد کردن === WireGuard Config ===\n
+            return logs.substring(start + 23, end).trim();  // Adjusted for exact marker length
         }
 
         function copyConfig() {
