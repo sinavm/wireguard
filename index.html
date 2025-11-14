@@ -1,152 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PureVPN WireGuard Config</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f4; }
-        .container { max-width: 600px; margin: 0 auto; }
-        button { 
-            margin: 10px; 
-            padding: 15px 25px; 
-            font-size: 18px; 
-            width: 80%; 
-            border: none; 
-            border-radius: 8px; 
-            background: #007bff; 
-            color: white; 
-            cursor: pointer;
-        }
-        button:hover { background: #0056b3; }
-        .loading { display: none; color: green; font-weight: bold; }
-        .error { display: none; color: red; font-weight: bold; }
-        .config { margin-top: 20px; }
-        pre { background: #eee; padding: 15px; text-align: left; border-radius: 8px; display: inline-block; word-break: break-all; }
-        .copy-btn { margin-top: 10px; padding: 8px 16px; font-size: 14px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .copy-btn:hover { background: #218838; }
+        body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;text-align:center;margin-top:40px}
+        .c{max-width:600px;margin:auto}
+        button{margin:8px;padding:14px 20px;font-size:17px;width:78%;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer}
+        button:hover{background:#0056b3}
+        .loading,.error{display:none;color:green;font-weight:bold}
+        .error{color:red}
+        pre{background:#eee;padding:14px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
+        .copy-btn{margin-top:8px;padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
+        .copy-btn:hover{background:#218838}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>WireGuard Config Generator</h1>
-        <p>کلیک کن → ۳۰ دقیقه کانفیگ بگیر</p>
+<div class="c">
+    <h1>WireGuard Config Generator</h1>
+    <p>کلیک → ۳۰ دقیقه کانفیگ</p>
 
-        <button onclick="generate('UAE - Dubai')">🇦🇪 UAE - Dubai</button>
-        <button onclick="generate('UK - London')">🇬🇧 UK - London</button>
-        <button onclick="generate('Germany - Frankfurt')">🇩🇪 Germany - Frankfurt</button>
-        <button onclick="generate('Netherlands - Amsterdam')">🇳🇱 Netherlands - Amsterdam</button>
-        <button onclick="generate('Turkey - Istanbul')">🇹🇷 Turkey - Istanbul</button>
+    <button onclick="gen('UAE - Dubai')">UAE - Dubai</button>
+    <button onclick="gen('UK - London')">UK - London</button>
+    <button onclick="gen('Germany - Frankfurt')">Germany - Frankfurt</button>
+    <button onclick="gen('Netherlands - Amsterdam')">Netherlands - Amsterdam</button>
+    <button onclick="gen('Turkey - Istanbul')">Turkey - Istanbul</button>
 
-        <div id="loading" class="loading">در حال تولید کانفیگ... لطفاً صبر کنید (حدود ۳۰-۶۰ ثانیه)</div>
-        <div id="error" class="error"></div>
-        <div id="result" class="config" style="display:none;">
-            <pre id="config-text"></pre>
-            <br>
-            <button class="copy-btn" onclick="copyConfig()">کپی کانفیگ</button>
-        </div>
+    <div id="loading" class="loading">در حال تولید… (30‑60 ثانیه)</div>
+    <div id="error" class="error"></div>
+    <div id="result" style="display:none;margin-top:20px">
+        <pre id="cfg"></pre>
+        <button class="copy-btn" onclick="copy()">کپی کانفیگ</button>
     </div>
+</div>
 
-    <script>
-        // بدون token - public polling (فرض: ریپو public)
+<script>
+const owner = 'sinavm', repo = 'wireguard', wf = 'generate-config.yml';
 
-        async function generate(location) {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('error').style.display = 'none';
-            document.getElementById('result').style.display = 'none';
-
-            const owner = 'sinavm';
-            const repo = 'wireguard';
-            const workflowFile = 'generate-config.yml';
-
-            try {
-                // Trigger workflow بدون auth (public repo dispatch ممکنه محدود باشه؛ اگه کار نکرد، manual trigger از UI پیشنهاد بده)
-                // نکته: برای public repo، dispatch بدون token ممکنه fail بشه - اگه شد، کاربر رو به Actions tab هدایت کن
-                const dispatchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/dispatches`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ref: 'main',
-                        inputs: { location: location }
-                    })
-                });
-
-                if (!dispatchRes.ok) {
-                    // اگه 401/403/404، manual پیشنهاد بده
-                    if (dispatchRes.status >= 400 && dispatchRes.status < 500) {
-                        throw new Error(`Trigger failed (احتمالاً ریپو private یا auth لازم). برو به GitHub > Actions tab و دستی location رو انتخاب کن و run کن. بعد refresh کن.`);
-                    }
-                    const errData = await dispatchRes.json();
-                    throw new Error(`Workflow trigger failed: ${dispatchRes.status} - ${errData.message || 'Unknown error'}`);
-                }
-
-                // Short delay
-                await new Promise(r => setTimeout(r, 5000));
-
-                // Poll public runs (بدون token)
-                const run = await pollLatestRun(owner, repo);
-                if (!run) throw new Error('Workflow timed out (over 2 minutes). Check Actions tab manually.');
-
-                if (run.conclusion !== 'success') throw new Error(`Workflow failed: ${run.conclusion}. Check Actions tab.`);
-
-                // Fetch public logs (بدون token - برای public repo)
-                const logs = await fetchLogs(run.id);
-                const config = extractConfigFromLogs(logs);
-
-                if (!config) throw new Error('Config not found in logs. Check Actions tab.');
-
-                document.getElementById('config-text').textContent = config;
-                document.getElementById('result').style.display = 'block';
-            } catch (err) {
-                document.getElementById('error').textContent = 'خطا: ' + err.message;
-                document.getElementById('error').style.display = 'block';
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
+async function gen(loc) {
+    $('#loading').show(); $('#error').hide(); $('#result').hide();
+    try {
+        // 1. trigger (public repo → dispatch بدون توکن کار می‌کند)
+        const d = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/dispatches`, {
+            method:'POST',
+            headers:{'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+            body:JSON.stringify({ref:'main',inputs:{location:loc}})
+        });
+        if (!d.ok) {
+            const e = await d.json();
+            if (d.status===404) throw new Error('Workflow نه پیدا شد. فایل .github/workflows/generate-config.yml را چک کن.');
+            throw new Error(e.message||'خطا در trigger');
         }
 
-        async function pollLatestRun(owner, repo) {
-            for (let i = 0; i < 40; i++) {  // 2 min max
-                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`);
-                if (!res.ok) throw new Error('Failed to poll runs (repo public? check internet)');
-                const data = await res.json();
-                const latestRun = data.workflow_runs?.[0];
-                if (latestRun && latestRun.status === 'completed') {
-                    return latestRun;
-                }
-                await new Promise(r => setTimeout(r, 3000));
-            }
-            return null;
-        }
+        await sleep(5000);               // زمان شروع run
+        const run = await pollRun();
+        if (!run) throw new Error('تایم‌اوت (2 دقیقه). در Actions تب چک کن.');
 
-        async function fetchLogs(runId) {
-            // Public logs URL (redirect to raw text)
-            const logsUrl = `https://api.github.com/repos/sinavm/wireguard/actions/runs/${runId}/logs`;
-            const res = await fetch(logsUrl);
-            if (!res.ok) throw new Error(`Failed to fetch logs: ${res.status} (repo public?)`);
-            // Follow redirect for raw text
-            const textRes = await fetch(res.url.replace('/api.', '/'), { redirect: 'follow' });
-            return await textRes.text();
-        }
+        if (run.conclusion!=='success') throw new Error(`workflow شکست: ${run.conclusion}`);
 
-        function extractConfigFromLogs(logs) {
-            const start = logs.indexOf('=== WireGuard Config ===');
-            const end = logs.indexOf('=== End of Config ===', start);
-            if (start === -1 || end === -1) return null;
-            return logs.substring(start + 23, end).trim();
-        }
+        const logs = await fetchLogs(run.id);
+        const cfg = extract(logs);
+        if (!cfg) throw new Error('کانفیگ در لاگ‌ها پیدا نشد.');
 
-        function copyConfig() {
-            const text = document.getElementById('config-text').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                alert('کانفیگ کپی شد! (۳۰ دقیقه معتبره)');
-            }).catch(() => {
-                alert('کپی نشد. دستی انتخاب کن.');
-            });
-        }
-    </script>
+        $('#cfg').textContent = cfg;
+        $('#result').show();
+    } catch(e){
+        $('#error').textContent = 'خطا: '+e.message; $('#error').show();
+    } finally {$('#loading').hide();}
+}
+
+/* ---------- helpers ---------- */
+function $(s){return document.querySelector(s);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+async function pollRun(){
+    for(let i=0;i<40;i++){
+        const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`);
+        if(!r.ok) throw new Error('poll error');
+        const j = await r.json();
+        const run = j.workflow_runs?.[0];
+        if(run && run.status==='completed') return run;
+        await sleep(3000);
+    }
+    return null;
+}
+async function fetchLogs(id){
+    const u = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${id}/logs`;
+    const r = await fetch(u);
+    if(!r.ok) throw new Error('log fetch error');
+    // GitHub redirects to raw txt → follow
+    const txt = await fetch(r.url.replace('api.','')).then(t=>t.text());
+    return txt;
+}
+function extract(txt){
+    const s = txt.indexOf('=== WireGuard Config ===');
+    const e = txt.indexOf('=== End of Config ===',s);
+    return s===-1||e===-1 ? null : txt.substring(s+24,e).trim();
+}
+function copy(){
+    navigator.clipboard.writeText($('#cfg').textContent)
+      .then(()=>alert('کپی شد! (30 دقیقه معتبر)'))
+      .catch(()=>alert('کپی نشد، دستی انتخاب کن'));
+}
+</script>
 </body>
 </html>
