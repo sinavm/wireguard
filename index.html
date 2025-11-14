@@ -1,111 +1,132 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PureVPN WireGuard</title>
-  <style>
-    body{font-family:Arial,sans-serif;background:#f4f4f4;text-align:center;margin-top:40px}
-    .c{max-width:600px;margin:auto}
-    button{margin:8px;padding:14px 20px;font-size:17px;width:78%;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer}
-    button:hover{background:#0056b3}
-    .l,.e{display:none;color:green;font-weight:bold}
-    .e{color:red}
-    pre{background:#eee;padding:14px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
-    .copy{margin-top:8px;padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
-    .copy:hover{background:#218838}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PureVPN WireGuard Config</title>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;text-align:center;margin-top:40px}
+        .c{max-width:600px;margin:auto}
+        button{margin:8px;padding:14px 20px;font-size:17px;width:78%;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer}
+        button:hover{background:#0056b3}
+        .loading,.error{display:none;color:green;font-weight:bold}
+        .error{color:red}
+        pre{background:#eee;padding:14px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
+        .copy-btn{margin-top:8px;padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
+        .copy-btn:hover{background:#218838}
+    </style>
 </head>
 <body>
 <div class="c">
-  <h1>WireGuard Config</h1>
-  <p>کلیک → ۳۰ دقیقه کانفیگ</p>
+    <h1>WireGuard Config Generator</h1>
+    <p>کلیک → ۳۰ دقیقه کانفیگ</p>
 
-  <button onclick="gen('UAE - Dubai')">UAE - Dubai</button>
-  <button onclick="gen('UK - London')">UK - London</button>
-  <button onclick="gen('Germany - Frankfurt')">Germany - Frankfurt</button>
-  <button onclick="gen('Netherlands - Amsterdam')">Netherlands - Amsterdam</button>
-  <button onclick="gen('Turkey - Istanbul')">Turkey - Istanbul</button>
+    <button onclick="gen('UAE - Dubai')">UAE - Dubai</button>
+    <button onclick="gen('UK - London')">UK - London</button>
+    <button onclick="gen('Germany - Frankfurt')">Germany - Frankfurt</button>
+    <button onclick="gen('Netherlands - Amsterdam')">Netherlands - Amsterdam</button>
+    <button onclick="gen('Turkey - Istanbul')">Turkey - Istanbul</button>
 
-  <div id="l" class="l">در حال تولید… (30‑60 ثانیه)</div>
-  <div id="e" class="e"></div>
-  <div id="r" style="display:none;margin-top:20px">
-    <pre id="cfg"></pre>
-    <button class="copy" onclick="copy()">کپی</button>
-  </div>
+    <div id="loading" class="loading">در حال تولید… (30‑60 ثانیه)</div>
+    <div id="error" class="error"></div>
+    <div id="result" style="display:none;margin-top:20px">
+        <pre id="cfg"></pre>
+        <button class="copy-btn" onclick="copy()">کپی کانفیگ</button>
+    </div>
 </div>
 
 <script>
-const O = 'sinavm', R = 'wireguard', W = 'generate-config.yml';
+  // ← این خط توسط workflow جایگزین می‌شه
+  const GITHUB_TOKEN = '%%GH_TOKEN%%';
+  const owner = 'sinavm', repo = 'wireguard', wf = 'generate-config.yml';
 
-async function gen(loc) {
-  $('#l').style.display = 'block'; $('#e').style.display = 'none'; $('#r').style.display = 'none';
-  try {
-    // Trigger
-    const t = await fetch(`https://api.github.com/repos/${O}/${R}/actions/workflows/${W}/dispatches`, {
-      method: 'POST',
-      headers: { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ref: 'main', inputs: { location: loc } })
-    });
-    if (!t.ok) {
-      const j = await t.json();
-      if (t.status === 404) throw new Error('Workflow پیدا نشد. فایل generate-config.yml را چک کن.');
-      throw new Error(j.message || 'خطا در trigger');
+  if (!GITHUB_TOKEN || GITHUB_TOKEN === '%%GH_TOKEN%%') {
+    $('#error').textContent = 'خطا: توکن تنظیم نشده. ریپو رو چک کن.';
+    $('#error').style.display = 'block';
+    throw new Error('Token missing');
+  }
+
+  async function gen(loc) {
+    $('#loading').style.display = 'block';
+    $('#error').style.display = 'none';
+    $('#result').style.display = 'none';
+
+    try {
+      // 1. Trigger با توکن
+      const d = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/dispatches`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${GITHUB_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { location: loc } })
+      });
+      if (!d.ok) {
+        const e = await d.json();
+        throw new Error(e.message || `Trigger failed: ${d.status}`);
+      }
+
+      await sleep(5000);
+      const run = await pollRun();
+      if (!run) throw new Error('تایم‌اوت (2 دقیقه)');
+
+      if (run.conclusion !== 'success') throw new Error(`Workflow شکست: ${run.conclusion}`);
+
+      const logs = await fetchLogs(run.id);
+      const cfg = extract(logs);
+      if (!cfg) throw new Error('کانفیگ در لاگ‌ها پیدا نشد');
+
+      $('#cfg').textContent = cfg;
+      $('#result').style.display = 'block';
+    } catch (e) {
+      $('#error').textContent = 'خطا: ' + e.message;
+      $('#error').style.display = 'block';
+    } finally {
+      $('#loading').style.display = 'none';
     }
-
-    await sleep(5000);
-    const run = await poll();
-    if (!run) throw new Error('تایم‌اوت. در Actions چک کن.');
-    if (run.conclusion !== 'success') throw new Error(`شکست: ${run.conclusion}`);
-
-    const logs = await getLogs(run.id);
-    const cfg = extract(logs);
-    if (!cfg) throw new Error('کانفیگ در لاگ‌ها نبود.');
-
-    $('#cfg').textContent = cfg;
-    $('#r').style.display = 'block';
-  } catch (err) {
-    $('#e').textContent = 'خطا: ' + err.message;
-    $('#e').style.display = 'block';
-  } finally {
-    $('#l').style.display = 'none';
   }
-}
 
-function $(s) { return document.querySelector(s); }
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  /* ---------- helpers ---------- */
+  function $(s) { return document.querySelector(s); }
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function poll() {
-  for (let i = 0; i < 40; i++) {
-    const r = await fetch(`https://api.github.com/repos/${O}/${R}/actions/runs?per_page=1`);
-    if (!r.ok) throw new Error('خطا در poll');
-    const j = await r.json();
-    const run = j.workflow_runs?.[0];
-    if (run && run.status === 'completed') return run;
-    await sleep(3000);
+  async function pollRun() {
+    for (let i = 0; i < 40; i++) {
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`, {
+        headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+      });
+      if (!r.ok) throw new Error('poll error');
+      const j = await r.json();
+      const run = j.workflow_runs?.[0];
+      if (run && run.status === 'completed') return run;
+      await sleep(3000);
+    }
+    return null;
   }
-  return null;
-}
 
-async function getLogs(id) {
-  const u = `https://api.github.com/repos/${O}/${R}/actions/runs/${id}/logs`;
-  const r = await fetch(u);
-  if (!r.ok) throw new Error('خطا در دریافت لاگ');
-  const txt = await fetch(r.url.replace('api.', '')).then(t => t.text());
-  return txt;
-}
+  async function fetchLogs(id) {
+    const u = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${id}/logs`;
+    const r = await fetch(u, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
+    if (!r.ok) throw new Error('log fetch error');
+    // دنبال redirect به raw text
+    const txt = await fetch(r.url.replace('api.github.com', 'raw.githubusercontent.com').replace('/repos/', '/'), {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+    }).then(t => t.text());
+    return txt;
+  }
 
-function extract(t) {
-  const s = t.indexOf('=== WireGuard Config ===');
-  const e = t.indexOf('=== End of Config ===', s);
-  return s === -1 || e === -1 ? null : t.substring(s + 24, e).trim();
-}
+  function extract(txt) {
+    const s = txt.indexOf('=== WireGuard Config ===');
+    const e = txt.indexOf('=== End of Config ===', s);
+    return s === -1 || e === -1 ? null : txt.substring(s + 24, e).trim();
+  }
 
-function copy() {
-  navigator.clipboard.writeText($('#cfg').textContent)
-    .then(() => alert('کپی شد! (30 دقیقه معتبر)'))
-    .catch(() => alert('کپی نشد، دستی انتخاب کن'));
-}
+  function copy() {
+    navigator.clipboard.writeText($('#cfg').textContent)
+      .then(() => alert('کپی شد! (30 دقیقه معتبر)'))
+      .catch(() => alert('کپی نشد، دستی انتخاب کن'));
+  }
 </script>
 </body>
 </html>
