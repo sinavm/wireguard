@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#ffcc00">
     <title>پنل WireGuard SiNAVM | کانفیگ رایگان با Amnezia VPN</title>
 
+
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://sinavm.github.io/sinavm/wireguard.html">
     <meta property="og:title" content="پنل WireGuard SiNAVM">
@@ -287,6 +288,17 @@
             'Nigeria': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 79.127.149.39:51820\n'
         };
 
+        function showJoinModal() {
+            if (localStorage.getItem('joinedChannel')) return;
+            document.getElementById('join-modal').style.display = 'block';
+            document.getElementById('join-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('join-modal').classList.remove('active');
+            setTimeout(() => document.getElementById('join-modal').style.display = 'none', 500);
+        }
+
         function nextStep(step) {
 
             document.getElementById(`step${step}`).classList.add('active');
@@ -299,8 +311,8 @@
                     top: newStep.offsetTop - 100,
                     behavior: 'smooth'
                 });
-            }, 300); 
-            if (step === 2 && !localStorage.getItem('configsCopied')) {
+            }, 300);
+            if (step === 2 && !localStorage.getItem('configsCopied') && !localStorage.getItem('joinedChannel')) {
                 setTimeout(() => showJoinModal(), 1000); // After first config view
             }
             if (step === 3) {
@@ -324,28 +336,21 @@
             });
         }
 
-        function showJoinModal() {
-            document.getElementById('join-modal').style.display = 'block';
-            document.getElementById('join-modal').classList.add('active');
-        }
 
-        function closeModal() {
-            document.getElementById('join-modal').classList.remove('active');
-            setTimeout(() => document.getElementById('join-modal').style.display = 'none', 500);
-        }
+        document.querySelector('#join-modal button:first-of-type').addEventListener('click', () => {
+            localStorage.setItem('joinedChannel', 'true');
+            closeModal();
+            alert('درصورت خروج از کانال اشتراک شما قطع می شود');
+        });
 
 
         window.addEventListener('load', () => {
             setTimeout(() => window.scrollTo({top: 0, behavior: 'smooth'}), 100);
-            setTimeout(showJoinModal, 2000);
+            if (!localStorage.getItem('joinedChannel')) {
+                setTimeout(showJoinModal, 2000);
+            }
             fetch('https://page-views.count1.workers.dev').then(r => r.text()).then(d => document.getElementById('visit-count').innerText = d);
             updateProgress();
-        });
-
-
-        document.querySelector('#join-modal button:first-of-type').addEventListener('click', () => {
-            closeModal();
-            alert('درصورت لغو خروج از کانال اشتراک شما پس از چند ساعت قطع می شود');
         });
     </script>
 </body>
