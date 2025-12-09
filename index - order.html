@@ -2,134 +2,349 @@
 <html lang="fa">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PureVPN WireGuard Config</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="پنل اختصاصی SiNAVM | کانفیگ رایگان WireGuard با Amnezia VPN | فیلترشکن رایگان و امن">
+    <meta name="keywords" content="کانفیگ رایگان wireguard, amnezia vpn, sinavm, فیلترشکن رایگان">
+    <meta name="theme-color" content="#ffcc00">
+    <title>پنل WireGuard SiNAVM | کانفیگ رایگان با Amnezia VPN</title>
+
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sinavm.github.io/sinavm/wireguard.html">
+    <meta property="og:title" content="پنل WireGuard SiNAVM">
+    <meta property="og:description" content="کانفیگ‌های رایگان WireGuard با Amnezia VPN">
+    <meta property="og:image" content="https://sinavm.github.io/sinavm/logo/sinavm_logo_1.jpg">
+
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;text-align:center;margin-top:40px}
-        .c{max-width:600px;margin:auto}
-        button{margin:8px;padding:14px 20px;font-size:17px;width:78%;border:none;border-radius:6px;background:#007bff;color:#fff;cursor:pointer}
-        button:hover{background:#0056b3}
-        .loading,.error{display:none;color:green;font-weight:bold}
-        .error{color:red}
-        pre{background:#eee;padding:14px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
-        .copy-btn{margin-top:8px;padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;cursor:pointer}
-        .copy-btn:hover{background:#218838}
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Vazirmatn', Arial, sans-serif; 
+            direction: rtl; 
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%); 
+            color: #fff; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+            perspective: 1000px; 
+            position: relative; 
+        }
+        body::before { 
+            content: ''; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%), 
+                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%); 
+            z-index: -1; 
+            animation: float 20s ease-in-out infinite; 
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(180deg); } }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+        .header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            opacity: 0; transform: translateY(-50px) rotateX(30deg); 
+            animation: slideIn3D 1s ease forwards 0.5s; 
+        }
+        .header img { width: 80px; border-radius: 50%; box-shadow: 0 10px 30px rgba(255, 204, 0, 0.5); }
+        .header h1 { font-size: 2.5em; background: linear-gradient(45deg, #ffcc00, #00ffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 20px 0; }
+
+        .step { 
+            opacity: 0; transform: translateY(50px) scale(0.9); 
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            text-align: center; 
+        }
+        .step.active { opacity: 1; transform: translateY(0) scale(1); }
+        .step h2 { font-size: 2em; margin-bottom: 30px; color: #ffcc00; text-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
+        .step p { font-size: 1.2em; margin-bottom: 40px; line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto; color: #fff; }
+
+        .install-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+        @media (max-width: 768px) { .install-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 769px) and (max-width: 1024px) { .install-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1025px) { .install-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } /* Side by side on desktop */ }
+
+        .install-card { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05)); 
+            border: 1px solid rgba(255, 204, 0, 0.3); 
+            border-radius: 20px; 
+            padding: 20px 15px; 
+            text-align: center; 
+            transition: all 0.4s ease; 
+            transform-style: preserve-3d; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); 
+        }
+        .install-card:hover { 
+            transform: translateY(-10px) rotateX(10deg) rotateY(10deg); 
+            box-shadow: 0 20px 40px rgba(255, 204, 0, 0.4); 
+            border-color: #ffcc00; 
+        }
+        .install-card i { font-size: 2.5em; color: #ffcc00; margin-bottom: 10px; }
+        .install-card h3 { font-size: 1.1em; margin-bottom: 10px; }
+        .install-card .link-text { color: #00ffff; text-decoration: none; font-weight: bold; transition: color 0.3s; display: block; margin-top: 10px; }
+        .install-card .link-text:hover { color: #ffcc00; }
+
+        .flags-container { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; margin-top: 30px; }
+        .flag-card { 
+            width: 150px; height: 150px; 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 4em; cursor: pointer; 
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); 
+            position: relative; overflow: hidden; 
+        }
+        .flag-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent); transition: opacity 0.3s; opacity: 0; }
+        .flag-card:hover { transform: scale(1.1) rotate(360deg); box-shadow: 0 25px 50px rgba(255, 204, 0, 0.5); }
+        .flag-card:hover::before { opacity: 1; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .flag-card.ve { background: linear-gradient(135deg, #FED100 0%, #002B7F 50%, #D52B1E 100%); } /* Venezuela approx: yellow, blue, red */
+        .flag-card.ng { background: linear-gradient(135deg, #008753 0%, #FFFFFF 50%, #008753 100%); } /* Nigeria: green-white-green */
+
+        .education { 
+            margin-top: 50px; padding: 30px; 
+            background: rgba(255, 255, 255, 0.05); 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); 
+            opacity: 0; transform: translateY(30px); transition: all 0.8s ease; 
+        }
+        .education.active { opacity: 1; transform: translateY(0); }
+        .education ol { text-align: right; font-size: 1.1em; line-height: 2; }
+        .education li { margin-bottom: 15px; position: relative; }
+        .education .vip-section { margin-top: 30px; text-align: center; }
+
+        .copy-toast { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            background: linear-gradient(135deg, #00ff88, #32ff32); color: #000; 
+            padding: 15px 30px; border-radius: 50px; font-weight: bold; 
+            opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 1000; 
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4); 
+            transform: translateX(-50%) scale(0.9); 
+        }
+        .copy-toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+
+        .modal { 
+            display: none; position: fixed; z-index: 1001; left: 0; top: 0; 
+            width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
+            backdrop-filter: blur(10px); 
+        }
+        .modal-content { 
+            background: linear-gradient(135deg, #1a1a2e, #16213e); 
+            margin: 15% auto; padding: 30px; border-radius: 20px; 
+            width: 90%; max-width: 400px; text-align: center; 
+            transform: scale(0.7) rotateX(20deg); transition: all 0.5s ease; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5); 
+        }
+        .modal.active .modal-content { transform: scale(1) rotateX(0); }
+        .modal h2 { color: #ffcc00; margin-bottom: 20px; }
+        .modal button { 
+            background: linear-gradient(135deg, #ffcc00, #00ffff); 
+            border: none; padding: 12px 24px; border-radius: 25px; 
+            color: #000; font-weight: bold; cursor: pointer; 
+            transition: transform 0.3s; margin: 10px; 
+        }
+        .modal button:hover { transform: scale(1.05); }
+
+        .footer { 
+            text-align: center; margin-top: 50px; padding: 20px; 
+            background: rgba(0,0,0,0.3); border-radius: 15px; 
+        }
+        .footer a { color: #ffcc00; text-decoration: none; margin: 0 15px; transition: color 0.3s; }
+        .footer a:hover { color: #00ffff; }
+        #visit-count { font-weight: bold; }
+
+
+        .vip-button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #ffcc00, #00ffff); 
+            color: #000; padding: 15px 20px; border-radius: 50px; 
+            font-weight: bold; text-decoration: none; 
+            box-shadow: 0 5px 15px rgba(255, 204, 0, 0.5); 
+            transition: all 0.3s ease; 
+            transform: scale(1); 
+        }
+        .vip-button:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(255, 204, 0, 0.7); }
+
+
+        .progress { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 4px; 
+            background: rgba(255,255,255,0.1); z-index: 100; 
+        }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #ffcc00, #00ffff); transition: width 0.5s ease; }
+
+        @keyframes slideIn3D { to { opacity: 1; transform: translateY(0) rotateX(0); } }
+        @media (max-width: 768px) { .flags-container { gap: 20px; } .flag-card { width: 120px; height: 120px; font-size: 3em; } }
     </style>
 </head>
 <body>
-<div class="c">
-    <h1>WireGuard Config Generator</h1>
-    <p>کلیک → ۳۰ دقیقه کانفیگ</p>
+    <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
 
-    <button onclick="gen('UAE - Dubai')">UAE - Dubai</button>
-    <button onclick="gen('UK - London')">UK - London</button>
-    <button onclick="gen('Germany - Frankfurt')">Germany - Frankfurt</button>
-    <button onclick="gen('Netherlands - Amsterdam')">Netherlands - Amsterdam</button>
-    <button onclick="gen('Turkey - Istanbul')">Turkey - Istanbul</button>
+    <div class="container">
+        <header class="header">
+            <img src="https://sinavm.github.io/sinavm/logo/sinavm_logo_1.jpg" alt="لوگو SiNAVM">
+            <h1>خوش آمدید به پنل WireGuard SiNAVM</h1>
+            <p>برای استفاده از کانفیگ‌های وایرگارد SiNAVM، ابتدا برنامه Amnezia را روی دستگاهتان نصب کنید.</p>
+        </header>
 
-    <div id="loading" class="loading">در حال تولید… (30-60 ثانیه)</div>
-    <div id="error" class="error"></div>
-    <div id="result" style="display:none;margin-top:20px">
-        <pre id="cfg"></pre>
-        <button class="copy-btn" onclick="copy()">کپی کانفیگ</button>
+
+        <section id="step1" class="step active">
+            <div class="install-grid">
+
+                <a href="https://apps.apple.com/us/app/amneziavpn/id1600529900" target="_blank" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="install-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h3>آیفون</h3>
+                        <span class="link-text">دانلود از App Store</span>
+                    </div>
+                </a>
+
+                <a href="https://play.google.com/store/apps/details?id=org.amnezia.vpn" target="_blank" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="install-card">
+                        <i class="fab fa-android"></i>
+                        <h3>اندروید</h3>
+                        <span class="link-text">دانلود از Google Play</span>
+                    </div>
+                </a>
+
+                <a href="https://github.com/amnezia-vpn/amnezia-client/releases/download/4.7.0.0/AmneziaVPN_4.7.0.0_x64.exe" target="_blank" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="install-card">
+                        <i class="fab fa-windows"></i>
+                        <h3>ویندوز</h3>
+                        <span class="link-text">دانلود برای Windows</span>
+                    </div>
+                </a>
+
+                <a href="https://github.com/amnezia-vpn/amnezia-client/releases/download/4.7.0.0/AmneziaVPN_4.7.0.0.dmg" target="_blank" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="install-card">
+                        <i class="fab fa-apple"></i>
+                        <h3>مک</h3>
+                        <span class="link-text">دانلود برای Mac</span>
+                    </div>
+                </a>
+            </div>
+            <button onclick="nextStep(2)" style="background: linear-gradient(135deg, #ffcc00, #00ffff); border: none; padding: 15px 30px; border-radius: 25px; color: #000; font-weight: bold; cursor: pointer; font-size: 1.1em; margin-top: 10px; margin-bottom: 30px;">نصب شد؟ ادامه دهید</button>
+        </section>
+
+
+        <section id="step2" class="step">
+            <p>روی یکی از پرچم‌ها کلیک کنید تا کانفیگ WireGuard کپی شود.</p>
+            <div class="flags-container">
+                <div class="flag-card ve" data-config="#telegram_sinavm&#10;[Interface]&#10;Address = 10.14.0.2/16&#10;PrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=&#10;DNS = 162.252.172.57, 149.154.159.92&#10;[Peer]&#10;#sinavm&#10;PublicKey = fK7yvbWdPrpginzYzhQu7IT6J+Mf18/K+VNrwyXqriU=&#10;AllowedIPs = 0.0.0.0/0&#10;Endpoint = 45.149.3.36:51820&#10;" onclick="copyConfig(this, 'Venezuela')">
+                    🇻🇪
+                </div>
+                <div class="flag-card ng" data-config="#telegram_sinavm&#10;[Interface]&#10;Address = 10.14.0.2/16&#10;PrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=&#10;DNS = 162.252.172.57, 149.154.159.92&#10;[Peer]&#10;#sinavm&#10;PublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=&#10;AllowedIPs = 0.0.0.0/0&#10;Endpoint = 79.127.149.39:51820&#10;" onclick="copyConfig(this, 'Nigeria')">
+                    🇳🇬
+                </div>
+            </div>
+        </section>
+
+
+        <section id="step3" class="step education">
+            <h2>آموزش استفاده</h2>
+            <ol>
+                <li>داخل برنامه Amnezia، روی بعلاوه + بزنید.</li>
+                <li>کانفیگ را در قسمت "Insert Key" وارد کنید.</li>
+                <li>بعد از وارد کردن، دکمه "Continue" را بزنید.</li>
+                <li>سپس حتماً تیک گزینه obfuscation را بزنید: <br><strong>Enable WireGuard obfuscation. It may be useful if WireGuard is blocked on your provider</strong> ✅</li>
+            </ol>
+            <div class="vip-section">
+                <a href="https://t.me/sinvt" target="_blank" class="vip-button">خرید اشتراک VIP</a>
+            </div>
+        </section>
     </div>
-</div>
 
-<!-- *** مهم: این باید اولین اسکریپت JS باشد *** -->
-<script>
-  const GITHUB_TOKEN = '%%GH_TOKEN%%';  // این خط توسط workflow جایگزین می‌شود
-</script>
 
-<script>
-  const owner = 'sinavm', repo = 'wireguard', wf = 'generate-config.yml';
+    <div id="join-modal" class="modal">
+        <div class="modal-content">
+            <h2>عضو کانال شو!</h2>
+            <p>برای دریافت کانفیگ‌های بیشتر، باید عضو کانال تلگرام SiNAVM باشی.</p>
+            <a href="https://t.me/sinavm" target="_blank"><button>عضویت</button></a>
+            <button onclick="closeModal()">بستن</button>
+        </div>
+    </div>
 
-  if (!GITHUB_TOKEN || GITHUB_TOKEN === '%%GH_TOKEN%%') {
-    $('#error').textContent = 'خطا: توکن تنظیم نشده. ریپو رو چک کن.';
-    $('#error').style.display = 'block';
-    throw new Error('Token missing');
-  }
 
-  async function gen(loc) {
-    $('#loading').style.display = 'block';
-    $('#error').style.display = 'none';
-    $('#result').style.display = 'none';
+    <div id="toast" class="copy-toast"><i class="fas fa-check-circle"></i> کانفیگ WireGuard ${country} با موفقیت کپی شد! 🚀</div>
 
-    try {
-      const d = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/${wf}/dispatches`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `token ${GITHUB_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ref: 'main', inputs: { location: loc } })
-      });
+    <footer class="footer">
+        <a href="https://t.me/sinavm" target="_blank"><i class="fab fa-telegram"></i> کانال تلگرام</a>
+        <a href="https://github.com/sinavm" target="_blank"><i class="fab fa-github"></i> GitHub</a>
+        <span>بازدید کل: <span id="visit-count">...</span></span>
+    </footer>
 
-      if (!d.ok) {
-        const e = await d.json();
-        throw new Error(e.message || `Trigger failed: ${d.status}`);
-      }
+    <script>
+        let currentStep = 1;
+        const configs = {
+            'Venezuela': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = fK7yvbWdPrpginzYzhQu7IT6J+Mf18/K+VNrwyXqriU=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 45.149.3.36:51820\n',
+            'Nigeria': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 79.127.149.39:51820\n'
+        };
 
-      await sleep(5000);
-      const run = await pollRun();
-      if (!run) throw new Error('تایم‌اوت (2 دقیقه)');
+        function showJoinModal() {
+            document.getElementById('join-modal').style.display = 'block';
+            document.getElementById('join-modal').classList.add('active');
+        }
 
-      if (run.conclusion !== 'success') throw new Error(`Workflow شکست: ${run.conclusion}`);
+        function closeModal() {
+            document.getElementById('join-modal').classList.remove('active');
+            setTimeout(() => document.getElementById('join-modal').style.display = 'none', 500);
+        }
 
-      const logs = await fetchLogs(run.id);
-      const cfg = extract(logs);
-      if (!cfg) throw new Error('کانفیگ در لاگ‌ها پیدا نشد');
+        function nextStep(step) {
 
-      $('#cfg').textContent = cfg;
-      $('#result').style.display = 'block';
-    } catch (e) {
-      $('#error').textContent = 'خطا: ' + e.message;
-      $('#error').style.display = 'block';
-    } finally {
-      $('#loading').style.display = 'none';
-    }
-  }
+            document.getElementById(`step${step}`).classList.add('active');
+            currentStep = step;
+            updateProgress();
 
-  function $(s) { return document.querySelector(s); }
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+            setTimeout(() => {
+                const newStep = document.getElementById(`step${step}`);
+                window.scrollTo({
+                    top: newStep.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }, 300);
+            if (step === 3) {
+                document.querySelector('.education').classList.add('active');
+            }
+        }
 
-  async function pollRun() {
-    for (let i = 0; i < 40; i++) {
-      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=1`, {
-        headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-      });
-      if (!r.ok) throw new Error('poll error');
-      const j = await r.json();
-      const run = j.workflow_runs?.[0];
-      if (run && run.status === 'completed') return run;
-      await sleep(3000);
-    }
-    return null;
-  }
+        function updateProgress() {
+            document.getElementById('progress-bar').style.width = `${(currentStep / 3) * 100}%`;
+        }
 
-  async function fetchLogs(id) {
-    const u = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${id}/logs`;
-    const r = await fetch(u, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
-    if (!r.ok) throw new Error('log fetch error');
+        function copyConfig(card, country) {
+            const config = configs[country];
+            navigator.clipboard.writeText(config).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerHTML = `<i class="fas fa-check-circle"></i> کانفیگ WireGuard ${country} با موفقیت کپی شد! 🚀`;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+                localStorage.setItem('configsCopied', 'true');
+                nextStep(3);
+            });
+        }
 
-    const txt = await fetch(r.url.replace('api.github.com', 'raw.githubusercontent.com').replace('/repos/', '/'), {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-    }).then(t => t.text());
 
-    return txt;
-  }
+        document.querySelector('#join-modal button:first-of-type').addEventListener('click', () => {
+            closeModal();
+            alert('درصورت خروج از کانال اشتراک شما قطع می شود');
+        });
 
-  function extract(txt) {
-    const s = txt.indexOf('=== WireGuard Config ===');
-    const e = txt.indexOf('=== End of Config ===', s);
-    return s === -1 || e === -1 ? null : txt.substring(s + 24, e).trim();
-  }
 
-  function copy() {
-    navigator.clipboard.writeText($('#cfg').textContent)
-      .then(() => alert('کپی شد! (30 دقیقه معتبر)'))
-      .catch(() => alert('کپی نشد، دستی انتخاب کن'));
-  }
-</script>
+        window.addEventListener('load', () => {
+            setTimeout(() => window.scrollTo({top: 0, behavior: 'smooth'}), 100);
+            setTimeout(() => showJoinModal(), 2000);
+            fetch('https://page-views.count1.workers.dev').then(r => r.text()).then(d => document.getElementById('visit-count').innerText = d);
+            updateProgress();
+        });
+    </script>
 </body>
 </html>
