@@ -145,6 +145,7 @@
         }
         .flag-card.ve { background: linear-gradient(135deg, #FED100 0%, #002B7F 50%, #D52B1E 100%); } /* Venezuela approx: yellow, blue, red */
         .flag-card.ng { background: linear-gradient(135deg, #008753 0%, #FFFFFF 50%, #008753 100%); } /* Nigeria: green-white-green */
+        .flag-card.kh { background: linear-gradient(135deg, #00247D 0%, #FFFFFF 40%, #DA251D 100%); } /* Cambodia approx: blue, white, red */
 
         .education { 
             margin-top: 50px; padding: 30px; 
@@ -159,14 +160,39 @@
         .education .vip-section { margin-top: 30px; text-align: center; }
 
         .copy-toast { 
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
-            background: linear-gradient(135deg, #00ff88, #32ff32); color: #000; 
-            padding: 15px 30px; border-radius: 50px; font-weight: bold; 
-            opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 1000; 
-            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.4); 
-            transform: translateX(-50%) scale(0.9); 
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            color: #fff; 
+            padding: 12px 24px; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            font-size: 1em; 
+            opacity: 0; 
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            z-index: 1000; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); 
+            transform: translateX(-50%) scale(0.8) translateY(20px); 
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); 
         }
-        .copy-toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+        .copy-toast.show { 
+            opacity: 1; 
+            transform: translateX(-50%) scale(1) translateY(0); 
+        }
+        .copy-toast::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; left: 0; 
+            right: 0; bottom: 0; 
+            border-radius: 50px; 
+            padding: 2px; 
+            background: linear-gradient(45deg, #ffcc00, #00ffff); 
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); 
+            mask-composite: xor; 
+            -webkit-mask-composite: xor; 
+            opacity: 0.3; 
+        }
 
         .modal { 
             display: none; position: fixed; z-index: 1001; left: 0; top: 0; 
@@ -225,7 +251,7 @@
     <div class="container">
         <header class="header">
             <img src="https://sinavm.github.io/sinavm/logo/sinavm_logo_1.jpg" alt="لوگو SiNAVM">
-            <h1>خوش آمدید به پنل WireGuard SiNAVM</h1>
+            <h1>WireGuard SiNAVM</h1>
             <p>برای استفاده از کانفیگ‌های وایرگارد SiNAVM، ابتدا برنامه Amnezia را روی دستگاهتان نصب کنید.</p>
         </header>
 
@@ -276,6 +302,9 @@
                 <div class="flag-card ng" data-config="#telegram_sinavm&#10;[Interface]&#10;Address = 10.14.0.2/16&#10;PrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=&#10;DNS = 162.252.172.57, 149.154.159.92&#10;[Peer]&#10;#sinavm&#10;PublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=&#10;AllowedIPs = 0.0.0.0/0&#10;Endpoint = 79.127.149.39:51820&#10;" onclick="copyConfig(this, 'Nigeria')">
                     🇳🇬
                 </div>
+                <div class="flag-card kh" data-config="#telegram_sinavm&#10;[Interface]&#10;#telegram @sinavm&#10;Address = 10.14.0.2/16&#10;PrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=&#10;DNS = 162.252.172.57, 149.154.159.92&#10;[Peer]&#10;#sinavm&#10;PublicKey = z2Ik8BG6XgosyYE/O4Vz4kiPTZyoWSlJvZtFeFlNclI=&#10;AllowedIPs = 0.0.0.0/0&#10;Endpoint = 62.197.146.17:51820&#10;" onclick="copyConfig(this, 'Cambodia')">
+                    🇰🇭
+                </div>
             </div>
         </section>
 
@@ -311,10 +340,26 @@
     </footer>
 
     <script>
+        // مدیریت اسکرول بهینه
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            window.scrollTo(0, 0);
+        });
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 50);
+        });
+
         let currentStep = 1;
         const configs = {
             'Venezuela': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = fK7yvbWdPrpginzYzhQu7IT6J+Mf18/K+VNrwyXqriU=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 45.149.3.36:51820\n',
-            'Nigeria': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 79.127.149.39:51820\n'
+            'Nigeria': '#telegram_sinavm\n[Interface]\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = mMmsmMyqtASb4V42H5nxyD8BgauWrNhCCZdBHCsbC00=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 79.127.149.39:51820\n',
+            'Cambodia': '#telegram_sinavm\n[Interface]\n#telegram @sinavm\nAddress = 10.14.0.2/16\nPrivateKey = +F0UQpeRl+Z1hpcrCmBU5k69wHeuiCrehxxgxfY7z2w=\nDNS = 162.252.172.57, 149.154.159.92\n[Peer]\n#sinavm\nPublicKey = z2Ik8BG6XgosyYE/O4Vz4kiPTZyoWSlJvZtFeFlNclI=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 62.197.146.17:51820\n'
         };
 
         function showJoinModal() {
@@ -335,9 +380,9 @@
             updateProgress();
 
             setTimeout(() => {
-    const top = section.getBoundingClientRect().top + window.scrollY - 50; // 20px پایین‌تر
-    window.scrollTo({ top: top, behavior: 'smooth' });
-}, 300);
+                const top = section.getBoundingClientRect().top + window.scrollY - 50; // 20px پایین‌تر
+                window.scrollTo({ top: top, behavior: 'smooth' });
+            }, 300);
 
             if (step === 3) {
                 document.querySelector('.education').classList.add('active');
@@ -350,15 +395,15 @@
 
         function showToast(message) {
             const toast = document.getElementById('toast');
-            toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            toast.innerHTML = `<i class="fas fa-check-circle" style="margin-left: 8px;"></i> ${message}`;
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
         function copyConfig(card, country) {
             const config = configs[country];
             navigator.clipboard.writeText(config).then(() => {
-                showToast(`کانفیگ WireGuard ${country} با موفقیت کپی شد! 🚀`);
+                showToast(`کانفیگ کپی شد!`);
                 localStorage.setItem('configsCopied', 'true');
                 setTimeout(() => nextStep(3), 300);
             });
